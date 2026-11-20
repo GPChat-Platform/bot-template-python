@@ -4,7 +4,7 @@ import threading
 import time
 import unittest
 
-from bot_template.bot import Bot, parse_command
+from bot_template.bot import Bot, command_target, parse_command
 from bot_template.config import ConfigError, load_config
 from bot_template.gpchat import conversation_key, poll, verify_webhook_signature
 from bot_template.ops import Logger, Metrics
@@ -91,6 +91,20 @@ class BotTest(unittest.TestCase):
         self.assertEqual(self.client.sent[-1]["target"], {"groupId": "G"})
         self.bot.handle({"id": "c1", "type": "callback.received", "data": {"from": "u1", "chatId": "u1", "data": "counter:3", "msgId": "m9"}})
         self.assertEqual(self.client.edits[-1], {"msgId": "m9", "content": "🔢 Compteur : **3**"})
+
+
+class AddressedCommandTest(unittest.TestCase):
+    def test_other_bot_ignored(self):
+        client = FakeClient()
+        bot = Bot(client, Store(""), [], "fr", SILENT, bot_username="@Mon_Bot")
+        g = lambda text: bot.handle({"id": text, "type": "group_message.received", "data": {"from": "u1", "groupId": "G", "type": "text", "textMsg": text}})
+        g("/ping@autre_bot")
+        self.assertEqual(client.sent, [])
+        g("/ping@mon_bot")
+        g("/ping")
+        self.assertEqual(len(client.sent), 2)
+        self.assertEqual(command_target("/aide@Foot_Bot x"), "foot_bot")
+        self.assertIsNone(command_target("/aide"))
 
 
 class PollTest(unittest.TestCase):

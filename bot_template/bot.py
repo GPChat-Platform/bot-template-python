@@ -16,7 +16,14 @@ from .ops import Logger
 from .store import Store
 
 _COMMAND = re.compile(r"^/([a-zA-Z0-9_]+)(?:@\w+)?(?:\s+([\s\S]*))?$")
+_TARGET = re.compile(r"^/[a-zA-Z0-9_]+@(\w+)")
 _COUNTER = re.compile(r"^counter:(-?\d+)$")
+
+
+def command_target(text: Optional[str]) -> Optional[str]:
+    """« /aide@mon_bot » → "mon_bot" : en groupe, une commande adressée ne concerne QUE ce bot (convention Telegram)."""
+    m = _TARGET.match((text or "").strip())
+    return m.group(1).lower() if m else None
 
 
 def parse_command(text: Optional[str]) -> Optional[tuple[str, str]]:
@@ -63,12 +70,13 @@ class Context:
 
 
 class Bot:
-    def __init__(self, client: Any, store: Store, admin_ids: list[str], default_lang: str, log: Logger):
+    def __init__(self, client: Any, store: Store, admin_ids: list[str], default_lang: str, log: Logger, bot_username: Optional[str] = None):
         self.client = client
         self.store = store
         self.admin_ids = set(admin_ids)
         self.default_lang = default_lang
         self.log = log
+        self.bot_username = (bot_username or "").lstrip("@").lower() or None
 
     def lang_of(self, user_id: str) -> str:
         return self.store.get(user_id).get("lang") or self.default_lang
@@ -104,6 +112,9 @@ class Bot:
             cmd = parse_command(d.get("textMsg"))
             if not cmd and not d.get("isMentioned"):
                 return  # le bot n'écoute pas les conversations de groupe
+            target = command_target(d.get("textMsg"))
+            if cmd and target and self.bot_username and target != self.bot_username:
+                return  # commande adressée à un autre bot du groupe
             self._run(self._context({"groupId": d["groupId"]}, user_id, cmd[1] if cmd else "", True), cmd[0] if cmd else "help")
         elif kind == "callback.received":
             target = {"groupId": d["groupId"]} if d.get("groupId") else {"to": d.get("chatId") or user_id}

@@ -41,7 +41,7 @@ def main() -> int:
 
     client.on_request = on_request
     store = Store(config.data_dir)
-    bot = Bot(client, store, config.admin_ids, config.default_lang, log)
+    bot = Bot(client, store, config.admin_ids, config.default_lang, log, bot_username=config.bot_username)
     handle = instrument(bot.handle, metrics, log)
 
     last_poll = {"at": time.time()}

@@ -9,6 +9,7 @@
     ADMIN_IDS              userId des administrateurs, séparés par des virgules
     DEFAULT_LANG           fr (défaut) | en
     LOG_LEVEL              debug | info (défaut) | warn | error
+    BOT_USERNAME           @nom du bot (facultatif) : en groupe, les commandes « /cmd@autre_bot » sont ignorées
     OPS_PORT / OPS_HOST    serveur d'exploitation /healthz /readyz /metrics (9100 / 127.0.0.1)
     GPCHAT_BASE_URL        autre environnement (rare)
 """
@@ -39,6 +40,7 @@ class Config:
     ops_port: int = 9100
     ops_host: str = "127.0.0.1"
     base_url: Optional[str] = None
+    bot_username: Optional[str] = None
 
 
 def _list(v: Optional[str]) -> list[str]:
@@ -86,6 +88,7 @@ def load_config(env: Mapping[str, str] = os.environ) -> Config:
         ops_port=_int("OPS_PORT", env.get("OPS_PORT"), 9100, 1, 65535, errors),
         ops_host=env.get("OPS_HOST") or "127.0.0.1",
         base_url=env.get("GPCHAT_BASE_URL") or None,
+        bot_username=(env.get("BOT_USERNAME") or "").lstrip("@").lower() or None,
     )
     if errors:
         raise ConfigError(errors)
